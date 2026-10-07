@@ -1,0 +1,110 @@
+{
+  "image": "librarian-drop-5frames.png",
+  "image_size": {
+    "w": 2172,
+    "h": 724
+  },
+  "frame_count": 5,
+  "order": "left-to-right",
+  "frame_canvas": {
+    "w": 640,
+    "h": 768
+  },
+  "anchor_in_canvas": {
+    "x": 256,
+    "y": 560
+  },
+  "animation_duration_ms": 600,
+  "frames": [
+    {
+      "name": "ready",
+      "duration_ms": 120,
+      "rect": {
+        "x": 44,
+        "y": 172,
+        "w": 380,
+        "h": 343
+      },
+      "anchor_in_rect": {
+        "x": 110,
+        "y": 341
+      },
+      "offset_in_canvas": {
+        "x": 146,
+        "y": 219
+      }
+    },
+    {
+      "name": "touch",
+      "duration_ms": 120,
+      "rect": {
+        "x": 462,
+        "y": 172,
+        "w": 381,
+        "h": 343
+      },
+      "anchor_in_rect": {
+        "x": 113,
+        "y": 341
+      },
+      "offset_in_canvas": {
+        "x": 143,
+        "y": 219
+      }
+    },
+    {
+      "name": "nudge",
+      "duration_ms": 120,
+      "rect": {
+        "x": 883,
+        "y": 172,
+        "w": 394,
+        "h": 343
+      },
+      "anchor_in_rect": {
+        "x": 113,
+        "y": 341
+      },
+      "offset_in_canvas": {
+        "x": 143,
+        "y": 219
+      }
+    },
+    {
+      "name": "tip",
+      "duration_ms": 120,
+      "rect": {
+        "x": 1308,
+        "y": 172,
+        "w": 424,
+        "h": 382
+      },
+      "anchor_in_rect": {
+        "x": 111,
+        "y": 341
+      },
+      "offset_in_canvas": {
+        "x": 145,
+        "y": 219
+      }
+    },
+    {
+      "name": "recover",
+      "duration_ms": 120,
+      "rect": {
+        "x": 1732,
+        "y": 172,
+        "w": 401,
+        "h": 435
+      },
+      "anchor_in_rect": {
+        "x": 109,
+        "y": 341
+      },
+      "offset_in_canvas": {
+        "x": 147,
+        "y": 219
+      }
+    }
+  ]
+}

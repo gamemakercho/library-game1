@@ -1,0 +1,110 @@
+{
+  "image": "cat-reshelve-5frames.png",
+  "image_size": {
+    "w": 2172,
+    "h": 724
+  },
+  "frame_count": 5,
+  "order": "left-to-right",
+  "frame_canvas": {
+    "w": 640,
+    "h": 768
+  },
+  "anchor_in_canvas": {
+    "x": 256,
+    "y": 560
+  },
+  "animation_duration_ms": 1000,
+  "frames": [
+    {
+      "name": "ready",
+      "duration_ms": 200,
+      "rect": {
+        "x": 33,
+        "y": 164,
+        "w": 388,
+        "h": 457
+      },
+      "anchor_in_rect": {
+        "x": 172,
+        "y": 455
+      },
+      "offset_in_canvas": {
+        "x": 84,
+        "y": 105
+      }
+    },
+    {
+      "name": "reach",
+      "duration_ms": 200,
+      "rect": {
+        "x": 461,
+        "y": 164,
+        "w": 421,
+        "h": 457
+      },
+      "anchor_in_rect": {
+        "x": 161,
+        "y": 455
+      },
+      "offset_in_canvas": {
+        "x": 95,
+        "y": 105
+      }
+    },
+    {
+      "name": "push",
+      "duration_ms": 200,
+      "rect": {
+        "x": 896,
+        "y": 164,
+        "w": 436,
+        "h": 457
+      },
+      "anchor_in_rect": {
+        "x": 168,
+        "y": 455
+      },
+      "offset_in_canvas": {
+        "x": 88,
+        "y": 105
+      }
+    },
+    {
+      "name": "release",
+      "duration_ms": 200,
+      "rect": {
+        "x": 1342,
+        "y": 164,
+        "w": 404,
+        "h": 457
+      },
+      "anchor_in_rect": {
+        "x": 172,
+        "y": 455
+      },
+      "offset_in_canvas": {
+        "x": 84,
+        "y": 105
+      }
+    },
+    {
+      "name": "recover",
+      "duration_ms": 200,
+      "rect": {
+        "x": 1789,
+        "y": 204,
+        "w": 342,
+        "h": 417
+      },
+      "anchor_in_rect": {
+        "x": 176,
+        "y": 415
+      },
+      "offset_in_canvas": {
+        "x": 80,
+        "y": 145
+      }
+    }
+  ]
+}
