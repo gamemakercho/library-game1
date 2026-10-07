@@ -6,6 +6,10 @@ class BookGame {
     drops: [], lastDrop: null, lastLandingAt: 0, finishAt: this.c.duration,
     shelving: null, nextSpawn: 0, state: 'ready', missed: 0, caught: 0, serial: 0 }); }
   start() { this.reset(); this.state = 'playing'; }
+  get isPerfect() {
+    return this.state === 'won' && this.serial > 0 && this.score === this.serial &&
+      this.missed === 0 && this.load === 0 && !this.shelving && !this.books.length && !this.drops.length;
+  }
   move(lane) { if (this.state === 'playing' && !this.shelving && lane >= 0 && lane < 4) this.lane = lane; }
   shelve() {
     if (this.state !== 'playing' || this.shelving || !this.load) return false;

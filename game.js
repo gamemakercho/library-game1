@@ -1,8 +1,8 @@
 const $ = s => document.querySelector(s);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d');
 const L = CONFIG.layout, game = new BookGame(CONFIG), images = {};
-let phase='loading', last=0, countdown=0, pausedPhase='', completed=false;
-const names=['library-background','empty-cart','pushing-cat','stack-red','stack-gold','stack-teal','librarian-idle','falling-book-red-trim','falling-book-teal-trim','floor-book-trim','cat-reshelve-5frames','librarian-drop-5frames'];
+let phase='loading', last=0, countdown=0, pausedPhase='', completed=false, assetsReady=false;
+const names=['library-background','empty-cart','pushing-cat','stack-red','stack-gold','stack-teal','librarian-idle','falling-book-red-trim','falling-book-teal-trim','floor-book-trim','cat-reshelve-5frames','librarian-drop-5frames','perfect-clear'];
 const laneButtons=[...document.querySelectorAll('[data-lane]')];
 laneButtons.forEach((b,i)=>{b.style.left=(L.columns[i]/L.width*100)+'%';b.addEventListener('pointerdown',e=>{e.preventDefault();sync();if(phase==='playing')game.move(i);render();});});
 $('#shelve').addEventListener('pointerdown',e=>{e.preventDefault();sync();if(phase==='playing')game.shelve();render();});
@@ -13,15 +13,16 @@ $('#pause').addEventListener('click',pause);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
 function show(title,body,label,story='') {
   $('#overlay').className='';$('h1').textContent=title;$('#story').innerHTML=story;
+  $('#perfect-image').hidden=true;
   $('#instructions').innerHTML=body;$('#primary').textContent=label;$('#primary').disabled=false;$('#status').textContent='';
 }
 async function load(){
-  phase='loading';$('#primary').disabled=true;
+  phase='loading';assetsReady=false;$('#primary').disabled=true;
   try { await Promise.all(names.map(name=>new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>{images[name]=im;resolve();};im.onerror=()=>reject(new Error(name));im.src='assets/'+name+'.png';})));
-    phase='ready';$('#instructions').innerHTML='<p>카트를 움직여 책을 받아주세요.<br>카트에는 <b>'+CONFIG.capacity+'권</b>까지 담을 수 있어요.<br>오른쪽 <b>‘책 꽂기’</b>로 한 권씩 빠르게 정리하세요!<br><b>'+CONFIG.duration/1000+'초 동안 최대한 많이</b> · 목표 '+CONFIG.target+'권</p><div class="tips">① ② ③ ④ 이동 · ▣ 책 꽂기<br><small>한 권당 '+CONFIG.shelvePerBook/1000+'초!<br>마지막 책을 받은 뒤 '+CONFIG.cleanupGrace/1000+'초의 정리 시간이 있어요.</small></div>';$('#primary').textContent='시작하기';$('#primary').disabled=false;$('#status').textContent='터치 또는 키보드 1–4 · 스페이스로 책 꽂기';render();
+    assetsReady=true;phase='ready';$('#instructions').innerHTML='<p>카트를 움직여 책을 받아주세요.<br>카트에는 <b>'+CONFIG.capacity+'권</b>까지 담을 수 있어요.<br>오른쪽 <b>‘책 꽂기’</b>로 한 권씩 빠르게 정리하세요!<br><b>'+CONFIG.duration/1000+'초 동안 최대한 많이</b> · 목표 '+CONFIG.target+'권</p><div class="tips">① ② ③ ④ 이동 · ▣ 책 꽂기<br><small>한 권당 '+CONFIG.shelvePerBook/1000+'초!<br>마지막 책을 받은 뒤 '+CONFIG.cleanupGrace/1000+'초의 정리 시간이 있어요.</small></div>';$('#primary').textContent='시작하기';$('#primary').disabled=false;$('#status').textContent='터치 또는 키보드 1–4 · 스페이스로 책 꽂기';render();
   }catch(e){phase='error';show('그림을 불러오지 못했어요',`<p>assets 폴더가 index.html 옆에 있는지 확인해주세요.<br>불러오지 못한 그림: ${e.message}</p>`,'다시 불러오기');}
 }
-function start(){game.reset();completed=false;phase='countdown';countdown=3000;last=performance.now();$('#overlay').className='countdown';$('h1').textContent='3';render();}
+function start(){game.reset();completed=false;phase='countdown';countdown=3000;last=performance.now();$('#perfect-image').hidden=true;$('#overlay').className='countdown';$('h1').textContent='3';render();}
 function sync(now=performance.now()){
   const dt=Math.max(0,now-last);last=now;
   if(phase==='countdown'){
@@ -34,9 +35,12 @@ function pause(){if(!['playing','countdown'].includes(phase))return;sync();if(![
 function resume(){phase=pausedPhase;last=performance.now();$('#overlay').className=phase==='countdown'?'countdown':'hidden';render();}
 function finish(){
  phase=game.state;
- const won=phase==='won';
- show(won?'정리 완료!':'시간이 다 됐어요',`<p><b>${game.score} / ${CONFIG.target}권</b> 정리했어요.</p><p>${won?'고양이 사서가 한숨 돌렸어요.<br>다음 단서를 찾아볼까요?':'카트의 책은 꽂아야 점수가 돼요.<br>다시 한번 도전해보세요!'}</p>`,won&&CONFIG.nextPuzzleUrl?'다음 단서로':'다시 도전');
- if(won&&!completed){completed=true;const detail={score:game.score,elapsedMs:game.time};window.dispatchEvent(new CustomEvent('bookcatch:complete',{detail}));if(typeof window.onGameComplete==='function'){try{window.onGameComplete(detail);}catch(e){console.error('onGameComplete',e);}}}
+ const won=phase==='won', perfect=game.isPerfect;
+ const title=perfect?'완벽하게 정리완료!':won?'정리 완료!':'시간이 다 됐어요';
+ const message=perfect?'총 '+game.serial+'권, 한 권도 놓치지 않았어요!':won?'목표 '+CONFIG.target+'권 달성!<br>고양이 사서가 한숨 돌렸어요.':'목표는 '+CONFIG.target+'권이에요.<br>다시 한번 도전해보세요!';
+ show(title,`<p><b>${game.score}점</b> · ${game.score}권 정리</p><p>${message}</p>`,won&&CONFIG.nextPuzzleUrl?'다음 단서로':'다시 도전');
+ if(perfect){$('#overlay').classList.add('perfect-result');$('#perfect-image').src=images['perfect-clear'].src;$('#perfect-image').hidden=false;}
+ if(won&&!completed){completed=true;const detail={score:game.score,elapsedMs:game.time,perfect,totalBooks:game.serial,missed:game.missed};window.dispatchEvent(new CustomEvent('bookcatch:complete',{detail}));if(typeof window.onGameComplete==='function'){try{window.onGameComplete(detail);}catch(e){console.error('onGameComplete',e);}}}
 }
 function draw(name,x,y,w,h){const im=images[name];if(im)ctx.drawImage(im,Math.round(x),Math.round(y),Math.round(w),Math.round(h??w*im.height/im.width));}
 // Use JSON rect + frame canvas placement, with a fixed source anchor.
@@ -51,7 +55,7 @@ function motion(name,elapsed,x,y,scale,mirror=false,duration){
  ctx.drawImage(images[name+'-5frames'],r.x,r.y,r.w,r.h,originX+o.x,originY+o.y,r.w,r.h);ctx.restore();
 }
 function render(){
- if(!images['library-background'])return;
+ if(!assetsReady)return;
  ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,L.width,L.height);draw('library-background',0,0,L.width,L.height);
  // Shelf bay centers are shared with touch targets, books, cart and numbered controls.
  const x=L.columns[game.lane];
@@ -85,7 +89,7 @@ function render(){
  const remaining=Math.max(0,Math.ceil((timerEnd-game.time)/1000));
  $('#time-label').textContent=cleanup?'⌛ 정리 시간':extended?'⌛ 마무리':'⌛ 남은 시간';
  $('#time').innerHTML=remaining+'<small>초</small>';
- $('#score').innerHTML=game.score+'<small>/'+CONFIG.target+'</small>';
+ $('#score').innerHTML=game.score+'<small>점</small>';
  $('#load').innerHTML=game.load+'<small>/'+CONFIG.capacity+'</small>';
  $('#timebar').style.width=(cleanup ? Math.min(1,Math.max(0,(game.finishAt-game.time)/CONFIG.cleanupGrace)) : Math.max(0,1-game.time/CONFIG.duration))*100+'%';
  laneButtons.forEach((b,i)=>{b.classList.toggle('selected',i===game.lane);b.disabled=phase!=='playing'||!!game.shelving;b.setAttribute('aria-pressed',String(i===game.lane));});

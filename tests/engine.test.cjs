@@ -20,4 +20,12 @@ check('last book can be caught and reshelved during the 2 s grace',()=>{const g=
 check('no new book starts exactly at the spawn cutoff',()=>{const g=new Game({...C,spawnUntil:1200},()=>0);g.start();g.advance(2000);assert.equal(g.serial,1);assert.equal(g.nextSpawn,Infinity)});
 check('large frame gaps and small frames yield same extended result',()=>{const a=new Game(C,()=>.75),b=new Game(C,()=>.75);a.start();b.start();a.advance(100000);for(let t=17;t<40000;t+=17)b.advance(t);assert.equal(JSON.stringify(a),JSON.stringify(b));assert(a.time>C.duration);assert.equal(a.books.length,0)});
 
+
+function perfectRun(){const g=new Game(C,()=>.75);g.start();let steps=0;while(g.state==='playing'){assert(++steps<1000);const next=Math.min(g.nextSpawn,g.shelving?.next??Infinity,...g.drops.map(d=>d.release),...g.books.map(b=>b.next),g.finishAt);g.advance(next);if(g.load&&!g.shelving&&g.state==='playing')g.shelve();}return g;}
+check('perfect requires every generated book to be caught and reshelved',()=>{const g=perfectRun();assert.equal(g.state,'won');assert(g.serial>=C.target);assert.equal(g.caught,g.serial);assert.equal(g.score,g.serial);assert.equal(g.missed,0);assert.equal(g.isPerfect,true)});
+check('a normal clear with a missed book is not perfect',()=>{const g=perfectRun();g.missed=1;g.score--;g.caught--;assert(g.score>=C.target);assert.equal(g.isPerfect,false)});
+check('caught but unreshelved books prevent perfect',()=>{const g=perfectRun();g.score--;g.load=1;assert.equal(g.isPerfect,false)});
+check('perfect cannot be awarded before the final result or after restart',()=>{const g=perfectRun();g.state='playing';assert.equal(g.isPerfect,false);g.state='won';assert.equal(g.isPerfect,true);g.start();assert.equal(g.isPerfect,false)});
+check('an empty game cannot be perfect',()=>{const g=new Game({...C,target:0,spawnUntil:0});g.start();g.advance(C.duration);assert.equal(g.state,'won');assert.equal(g.isPerfect,false)});
+
 console.log(n+' tests passed');
