@@ -3,7 +3,8 @@
 class BookGame {
   constructor(config, random = Math.random) { this.c = config; this.random = random; this.reset(); }
   reset() { Object.assign(this, { time: 0, score: 0, load: 0, lane: 3, books: [], floor: [],
-    drops: [], lastDrop: null, shelving: null, nextSpawn: 0, state: 'ready', missed: 0, caught: 0, serial: 0 }); }
+    drops: [], lastDrop: null, lastLandingAt: 0, finishAt: this.c.duration,
+    shelving: null, nextSpawn: 0, state: 'ready', missed: 0, caught: 0, serial: 0 }); }
   start() { this.reset(); this.state = 'playing'; }
   move(lane) { if (this.state === 'playing' && !this.shelving && lane >= 0 && lane < 4) this.lane = lane; }
   shelve() {
@@ -15,25 +16,32 @@ class BookGame {
   }
   advance(to) {
     if (this.state !== 'playing') return;
-    to = Math.min(to, this.c.duration);
+    to = Math.max(this.time, to);
     while (this.state === 'playing') {
       const next = Math.min(this.nextSpawn, this.shelving?.next ?? Infinity,
-        ...this.drops.map(x => x.release), ...this.books.map(x => x.next), this.c.duration);
+        ...this.drops.map(x => x.release), ...this.books.map(x => x.next), this.finishAt);
       if (next > to) break;
       this.time = next;
       // The deadline wins ties: an unfinished shelving operation never scores.
-      if (next >= this.c.duration) { this.state = this.score >= this.c.target ? 'won' : 'lost'; break; }
+      if (next >= this.finishAt) { this.state = this.score >= this.c.target ? 'won' : 'lost'; break; }
       if (this.shelving && this.shelving.next === next) {
         this.score++; this.load--; this.shelving.completed++;
         if (this.shelving.completed === this.shelving.count) this.shelving = null;
         else this.shelving.next += this.c.shelvePerBook;
       }
       if (this.nextSpawn === next) {
+        const stopAt = Math.min(this.c.duration, this.c.spawnUntil);
+        if (next < stopAt) {
         const p = Math.min(1, next / this.c.duration);
         this.lastDrop = { id: ++this.serial, lane: Math.floor(this.random()*4), start: next,
           release: next + this.c.dropDuration, step: this.c.fallStart + (this.c.fallEnd-this.c.fallStart)*p };
         this.drops.push(this.lastDrop);
-        this.nextSpawn = next + this.c.spawnStart + (this.c.spawnEnd-this.c.spawnStart)*p;
+        // Completion is measured from the last cart/floor judgement, not the release at the top.
+        this.lastLandingAt = Math.max(this.lastLandingAt, this.lastDrop.release + 4*this.lastDrop.step);
+        this.finishAt = Math.max(this.c.duration, this.lastLandingAt + this.c.cleanupGrace);
+        const scheduled = next + this.c.spawnStart + (this.c.spawnEnd-this.c.spawnStart)*p;
+        this.nextSpawn = scheduled < stopAt ? scheduled : Infinity;
+        } else this.nextSpawn = Infinity;
       }
       for (const d of this.drops.filter(d=>d.release === next)) this.books.push({ ...d, row: 0, next: next+d.step });
       this.drops = this.drops.filter(d=>d.release > next);
