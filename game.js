@@ -2,7 +2,7 @@ const $ = s => document.querySelector(s);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d');
 const L = CONFIG.layout, game = new BookGame(CONFIG), images = {};
 let phase='loading', last=0, countdown=0, pausedPhase='', completed=false;
-const names=['library-background','empty-cart','pushing-cat','stack-red','stack-gold','stack-teal','librarian-trim','falling-book-red-trim','falling-book-teal-trim','floor-book-trim','cat-reshelve-5frames','librarian-drop-5frames'];
+const names=['library-background','empty-cart','pushing-cat','stack-red','stack-gold','stack-teal','librarian-idle','falling-book-red-trim','falling-book-teal-trim','floor-book-trim','cat-reshelve-5frames','librarian-drop-5frames'];
 const laneButtons=[...document.querySelectorAll('[data-lane]')];
 laneButtons.forEach((b,i)=>{b.style.left=(L.columns[i]/L.width*100)+'%';b.addEventListener('pointerdown',e=>{e.preventDefault();sync();if(phase==='playing')game.move(i);render();});});
 $('#shelve').addEventListener('pointerdown',e=>{e.preventDefault();sync();if(phase==='playing')game.shelve();render();});
@@ -18,7 +18,7 @@ function show(title,body,label,story='') {
 async function load(){
   phase='loading';$('#primary').disabled=true;
   try { await Promise.all(names.map(name=>new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>{images[name]=im;resolve();};im.onerror=()=>reject(new Error(name));im.src='assets/'+name+'.png';})));
-    phase='ready';$('#instructions').innerHTML='<p>카트를 움직여 책을 받아주세요.<br>카트에는 <b>'+CONFIG.capacity+'권</b>까지 담을 수 있어요.<br>오른쪽 <b>‘책 꽂기’</b>를 눌러<br><b>'+CONFIG.duration/1000+'초 안에 '+CONFIG.target+'권</b>을 정리하세요!</p><div class="tips">① ② ③ ④ 이동 · ▣ 책 꽂기<br><small>정리하는 '+CONFIG.shelveDuration/1000+'초 동안에는 책을 받을 수 없어요.</small></div>';$('#primary').textContent='시작하기';$('#primary').disabled=false;$('#status').textContent='터치 또는 키보드 1–4 · 스페이스로 책 꽂기';render();
+    phase='ready';$('#instructions').innerHTML='<p>카트를 움직여 책을 받아주세요.<br>카트에는 <b>'+CONFIG.capacity+'권</b>까지 담을 수 있어요.<br>오른쪽 <b>‘책 꽂기’</b>로 한 권씩 빠르게 정리하세요!<br><b>'+CONFIG.duration/1000+'초 동안 최대한 많이</b> · 목표 '+CONFIG.target+'권</p><div class="tips">① ② ③ ④ 이동 · ▣ 책 꽂기<br><small>한 권당 '+CONFIG.shelvePerBook/1000+'초! 목표를 넘어도 끝까지 계속해요.</small></div>';$('#primary').textContent='시작하기';$('#primary').disabled=false;$('#status').textContent='터치 또는 키보드 1–4 · 스페이스로 책 꽂기';render();
   }catch(e){phase='error';show('그림을 불러오지 못했어요',`<p>assets 폴더가 index.html 옆에 있는지 확인해주세요.<br>불러오지 못한 그림: ${e.message}</p>`,'다시 불러오기');}
 }
 function start(){game.reset();completed=false;phase='countdown';countdown=3000;last=performance.now();$('#overlay').className='countdown';$('h1').textContent='3';render();}
@@ -58,17 +58,26 @@ function render(){
  ctx.fillStyle='#ffe6a51d';ctx.fillRect(x-88,402,176,865);
  ctx.fillStyle='#ffe5a3';ctx.font='bold 24px system-ui';ctx.textAlign='center';
  L.columns.forEach((cx,i)=>{ctx.fillStyle=i===game.lane?'#fff1ae':'#ead7b690';ctx.fillText(String(i+1),cx,1260);});
- const d=game.drops[game.drops.length-1];
- if(d){const mirrored=d.lane<2;motion('librarian-drop',game.time-d.start,L.columns[d.lane]+(mirrored?218:-218),L.shelfTop,.78,mirrored,CONFIG.dropDuration);}
- else draw('librarian-trim',390,L.shelfTop-293,360,293);
+ const d=game.lastDrop, librarianLane=d?.lane ?? 2, mirrored=librarianLane<2;
+ const librarianX=L.columns[librarianLane]+(mirrored?L.librarianDropOffset:-L.librarianDropOffset);
+ if(d && game.time-d.start<CONFIG.dropDuration){
+   motion('librarian-drop',game.time-d.start,librarianX,L.shelfTop,L.librarianScale,mirrored,CONFIG.dropDuration);
+ }else{
+   // Same recover frame, scale and contact anchor as the drop animation; only the released book is removed.
+   const idleFrame=MOTION['librarian-drop'].frames.at(-1), a=idleFrame.anchor_in_rect;
+   ctx.save();ctx.translate(Math.round(librarianX),L.shelfTop);ctx.scale(mirrored?-L.librarianScale:L.librarianScale,L.librarianScale);
+   ctx.drawImage(images['librarian-idle'],-a.x,-a.y);ctx.restore();
+ }
  for(const b of game.books){const y=L.rows[b.row];ctx.fillStyle='#25172888';ctx.fillRect(L.columns[b.lane]-46,y-65,92,126);draw('falling-book-red-trim',L.columns[b.lane]-40,y-57,80,114);}
  for(const b of game.floor){ctx.globalAlpha=Math.min(1,(CONFIG.floorLifetime-(game.time-b.at))/400);draw('floor-book-trim',L.columns[b.lane]-64,L.floor-23,128,60);ctx.globalAlpha=1;}
  // Cart crop preserves the original handles, three empty shelves, and wheels.
  const cartW=225, cartH=200, cartTop=L.floor-cartH;
  draw('empty-cart',x-cartW/2,cartTop,cartW,cartH);
  for(let i=0;i<game.load;i++)draw(['stack-red','stack-gold','stack-teal'][i%3],x-56,cartTop+37-(i+1)*25,112,27);
- if(game.shelving){motion('cat-reshelve',game.time-game.shelving.start,x+164,L.floor,.34,false,CONFIG.shelveDuration);
-  ctx.fillStyle='#362336';ctx.fillRect(x-100,L.floor+24,200,12);ctx.fillStyle='#ffdc78';ctx.fillRect(x-100,L.floor+24,200*Math.min(1,(game.time-game.shelving.start)/CONFIG.shelveDuration),12);
+ if(game.shelving){
+  const elapsed=game.time-game.shelving.start;
+  motion('cat-reshelve',elapsed % CONFIG.shelvePerBook,x+164,L.floor,.34,false,CONFIG.shelvePerBook);
+  ctx.fillStyle='#362336';ctx.fillRect(x-100,L.floor+24,200,12);ctx.fillStyle='#ffdc78';ctx.fillRect(x-100,L.floor+24,200*Math.min(1,elapsed/(game.shelving.end-game.shelving.start)),12);
  }else draw('pushing-cat',x+96,L.floor-155,141,155);
  $('#time').innerHTML=Math.max(0,Math.ceil((CONFIG.duration-game.time)/1000))+'<small>초</small>';
  $('#score').innerHTML=game.score+'<small>/'+CONFIG.target+'</small>';
