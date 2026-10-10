@@ -6,7 +6,7 @@
 
 ZIP을 **모두 압축 해제**하고 `index.html`을 Chrome, Edge, Safari 등 브라우저에서 엽니다. `assets` 폴더와 JS/CSS 파일을 함께 유지하세요. ZIP 내부에서 HTML만 열면 그림이 누락될 수 있습니다.
 
-모바일 행사 배포는 이 폴더 전체를 정적 웹 호스팅에 올린 뒤 URL을 QR 코드로 공유하면 됩니다. 휴대전화 파일 관리자에 따라 로컬 HTML 실행이 제한되면 정적 호스팅을 사용하세요. 현재 결과물은 로컬 실행용이며 호스팅 URL은 별도로 만들지 않았습니다.
+모바일 행사 배포는 이 폴더 전체를 정적 웹 호스팅에 올린 뒤 URL을 QR 코드로 공유하면 됩니다. 휴대전화 파일 관리자에 따라 로컬 HTML 실행이 제한되면 정적 호스팅을 사용하세요. 현재 GitHub Pages 주소는 https://gamemakercho.github.io/library-game1/ 입니다. 변경 후 GitHub Desktop에서 Commit to main → Push origin을 실행하면 업데이트됩니다.
 
 개발용 미리보기(선택): 이 폴더에서 `python -m http.server 8765` 실행 후 `http://localhost:8765` 방문.
 
@@ -59,7 +59,7 @@ window.addEventListener('bookcatch:complete', event => {
 
 ## 에셋과 구현
 
-원본 PNG와 모션 JSON을 `assets`에 보존했습니다. `empty-cart`, `pushing-cat`, `stack-*`는 원본 카트 그림에서 픽셀을 분리한 파일입니다. 기존 3권을 제거한 빈 카트 위에 실제 적재량만 표시합니다. `*-trim`은 투명 여백을 줄인 원본 그림입니다. `librarian-idle.png`는 떨어뜨리기 모션의 마지막 프레임에서 떨어진 책만 제거한 그림으로, 모션과 같은 크기 및 접촉 기준점으로 표시됩니다. 새 그림체를 생성하지 않았습니다.
+플레이에 필요한 이미지는 `assets`의 WebP로 정리했습니다. 원본 PNG는 별도 `bookcatch-original-assets.zip` 백업에 보관하며 배포 폴더에 넣지 않습니다. 모션 JSON은 그대로 포함합니다. `empty-cart`, `pushing-cat`, `stack-*`는 원본 카트 그림에서 픽셀을 분리한 파일입니다. 기존 3권을 제거한 빈 카트 위에 실제 적재량만 표시합니다. `*-trim`은 투명 여백을 줄인 원본 그림입니다. `librarian-idle.webp`는 떨어뜨리기 모션의 마지막 프레임에서 떨어진 책만 제거한 그림으로, 모션과 같은 크기 및 접촉 기준점으로 표시됩니다. 새 그림체를 생성하지 않았습니다.
 
 `motion-data.js`는 원본 JSON을 JS로 옮긴 데이터입니다. 로컬 `file://` 실행에서 JSON fetch 제한을 피합니다. 모션은 JSON의 개별 rect, anchor_in_rect, offset_in_canvas, frame_canvas, duration_ms를 사용합니다. 단순 5등분하지 않습니다. 책 꽂기 중에는 미는 고양이를 숨깁니다. 배경 서가나 화분을 추가하지 않습니다.
 
@@ -73,4 +73,15 @@ window.addEventListener('bookcatch:complete', event => {
 
 이미지 로드 순서 회귀 검증: `node tests/loading.test.cjs`. 배경이 먼저 로드되어도 모든 이미지가 준비될 때까지 렌더링을 기다려 애니메이션 루프가 멈추지 않는지 확인합니다.
 
-완벽 결과 이미지: `assets/perfect-clear.png`. 성공 콜백/이벤트의 기존 score, elapsedMs에 perfect(완벽 여부), totalBooks(생성 권수), missed(놓친 권수)가 추가됩니다. `BookGame.isPerfect`로 판정을 확인할 수 있습니다.
+완벽 결과 이미지: `assets/perfect-clear.webp`. 성공 콜백/이벤트의 기존 score, elapsedMs에 perfect(완벽 여부), totalBooks(생성 권수), missed(놓친 권수)가 추가됩니다. `BookGame.isPerfect`로 판정을 확인할 수 있습니다.
+
+## 이미지 압축과 데이터 사용량
+
+배경을 제외한 이미지 12개는 무손실 WebP이며, 원본 PNG를 디코딩한 RGBA 픽셀과 한 픽셀도 달라지지 않는 것을 확인했습니다. 모든 이미지의 원래 크기와 모션 좌표를 유지합니다. 배경만 WebP quality=85, method=6으로 압축했고 1103×1426 해상도를 유지했습니다.
+
+- 이미지 합계: 5.70MB → 3.07MB.
+- 첫 접속 파일 합계(이미지+HTML/CSS/JS): 약 5.73MB → 3.09MB, 약 46% 감소.
+- 배경: 1.44MB → 0.077MB, 약 95% 감소.
+- 사용하지 않는 PNG 원본을 백업으로 분리해 배포 폴더도 약 10.37MB → 3.12MB로 감소.
+
+위 숫자는 1MB=1,000,000bytes 기준의 파일 크기 합계입니다. 실제 전송량에는 HTTP 헤더 등이 더해지고 HTML/CSS/JS 전송 압축에 따라 조금 줄어들 수 있습니다. 최초 접속은 약 3.1MB를 예상하면 됩니다. 플레이와 다시 도전은 이미 로드한 그림을 재사용하며 점수/타이머를 서버로 보내지 않습니다. 다음 방문은 브라우저 캐시 상태에 따라 데이터 사용량이 더 줄어듭니다. 새 압축 버전의 첫 접속에서는 WebP를 새로 내려받습니다.
