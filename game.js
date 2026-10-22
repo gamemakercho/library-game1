@@ -2,7 +2,7 @@ const $ = s => document.querySelector(s);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d');
 const L = CONFIG.layout, game = new BookGame(CONFIG), images = {};
 let phase='loading', last=0, countdown=0, pausedPhase='', completed=false, assetsReady=false;
-const names=['library-background','empty-cart','pushing-cat','stack-red','stack-gold','stack-teal','librarian-idle','falling-book-red-trim','falling-book-teal-trim','floor-book-trim','cat-reshelve-5frames','librarian-drop-5frames','perfect-clear'];
+const names=['library-background','empty-cart','pushing-cat','stack-red','stack-gold','stack-teal','librarian-idle','falling-book-red-trim','falling-book-teal-trim','floor-book-trim','cat-reshelve-5frames','librarian-drop-5frames','perfect-clear','clear-success','clear-failure'];
 const laneButtons=[...document.querySelectorAll('[data-lane]')];
 laneButtons.forEach((b,i)=>{b.style.left=(L.columns[i]/L.width*100)+'%';b.addEventListener('pointerdown',e=>{e.preventDefault();sync();if(phase==='playing')game.move(i);render();});});
 $('#shelve').addEventListener('pointerdown',e=>{e.preventDefault();sync();if(phase==='playing')game.shelve();render();});
@@ -14,6 +14,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
 function show(title,body,label,story='') {
   $('#overlay').className='';$('h1').textContent=title;$('#story').innerHTML=story;
   $('#perfect-image').hidden=true;
+  $('#result-visual').hidden=true;
   $('#instructions').innerHTML=body;$('#primary').textContent=label;$('#primary').disabled=false;$('#status').textContent='';
 }
 async function load(){
@@ -22,7 +23,7 @@ async function load(){
     assetsReady=true;phase='ready';$('#instructions').innerHTML='<p>카트를 움직여 책을 받아주세요.<br>카트에는 <b>'+CONFIG.capacity+'권</b>까지 담을 수 있어요.<br>오른쪽 <b>‘책 꽂기’</b>로 한 권씩 빠르게 정리하세요!<br><b>'+CONFIG.duration/1000+'초 동안 최대한 많이</b> · 목표 '+CONFIG.target+'권</p><div class="tips">① ② ③ ④ 이동 · ▣ 책 꽂기<br><small>한 권당 '+CONFIG.shelvePerBook/1000+'초!<br>마지막 책을 받은 뒤 '+CONFIG.cleanupGrace/1000+'초의 정리 시간이 있어요.</small></div>';$('#primary').textContent='시작하기';$('#primary').disabled=false;$('#status').textContent='터치 또는 키보드 1–4 · 스페이스로 책 꽂기';render();
   }catch(e){phase='error';show('그림을 불러오지 못했어요',`<p>assets 폴더가 index.html 옆에 있는지 확인해주세요.<br>불러오지 못한 그림: ${e.message}</p>`,'다시 불러오기');}
 }
-function start(){game.reset();completed=false;phase='countdown';countdown=3000;last=performance.now();$('#perfect-image').hidden=true;$('#overlay').className='countdown';$('h1').textContent='3';render();}
+function start(){game.reset();completed=false;phase='countdown';countdown=3000;last=performance.now();$('#perfect-image').hidden=true;$('#result-visual').hidden=true;$('#overlay').className='countdown';$('h1').textContent='3';render();}
 function sync(now=performance.now()){
   const dt=Math.max(0,now-last);last=now;
   if(phase==='countdown'){
@@ -37,8 +38,12 @@ function finish(){
  phase=game.state;
  const won=phase==='won', perfect=game.isPerfect;
  const title=perfect?'완벽하게 정리완료!':won?'정리 완료!':'시간이 다 됐어요';
- const message=perfect?'총 '+game.serial+'권, 한 권도 놓치지 않았어요!':won?'목표 '+CONFIG.target+'권 달성!<br>고양이 사서가 한숨 돌렸어요.':'목표는 '+CONFIG.target+'권이에요.<br>다시 한번 도전해보세요!';
+ const message=perfect?'총 '+game.serial+'권, 한 권도 놓치지 않았어요!':won?'목표 '+CONFIG.target+'권 달성!':'목표는 '+CONFIG.target+'권! 다시 도전해보세요.';
  show(title,`<p><b>${game.score}점</b> · ${game.score}권 정리</p><p>${message}</p>`,won&&CONFIG.nextPuzzleUrl?'다음 단서로':'다시 도전');
+ $('#overlay').classList.add('result-screen',won?'won-result':'lost-result');
+ $('#result-image').src=images[won?'clear-success':'clear-failure'].src;
+ $('#result-image').alt=won?'책을 정리한 서가를 바라보는 고양이':'어질러진 책 사이에서 울고 있는 고양이';
+ $('#result-visual').hidden=false;
  if(perfect){$('#overlay').classList.add('perfect-result');$('#perfect-image').src=images['perfect-clear'].src;$('#perfect-image').hidden=false;}
  if(won&&!completed){completed=true;const detail={score:game.score,elapsedMs:game.time,perfect,totalBooks:game.serial,missed:game.missed};window.dispatchEvent(new CustomEvent('bookcatch:complete',{detail}));if(typeof window.onGameComplete==='function'){try{window.onGameComplete(detail);}catch(e){console.error('onGameComplete',e);}}}
 }
